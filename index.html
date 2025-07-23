@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>マインスイーパー</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="themes.css">
 </head>
-<body>
+<body class="theme-default">
     <div class="game-container">
         <h1>マインスイーパー</h1>
         
@@ -58,11 +59,88 @@
             <button id="resetStats" class="reset-stats-btn">統計をリセット</button>
         </div>
         
-        <div class="sound-toggle">
-            <label>
-                <input type="checkbox" id="soundToggle">
-                <span>🔊 効果音</span>
-            </label>
+        <div class="settings-row">
+            <div class="sound-toggle">
+                <label>
+                    <input type="checkbox" id="soundToggle">
+                    <span>🔊 効果音</span>
+                </label>
+            </div>
+            
+            <div class="theme-selector">
+                <label for="themeSelect">🎨 テーマ:</label>
+                <select id="themeSelect">
+                    <option value="default">デフォルト</option>
+                    <option value="dark">ダークモード</option>
+                    <option value="neon">ネオン</option>
+                    <option value="pastel">パステル</option>
+                    <option value="retro">レトロ</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="keyboard-help">
+            <button id="keyboardHelpBtn" class="help-btn">⌨️ キーボード操作</button>
+        </div>
+    </div>
+    
+    <!-- キーボードヘルプモーダル -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close">&times;</span>
+            <h2>⌨️ キーボード操作ガイド</h2>
+            <div class="help-content">
+                <div class="help-section">
+                    <h3>移動</h3>
+                    <div class="key-item">
+                        <span class="key">↑</span>
+                        <span class="key">↓</span>
+                        <span class="key">←</span>
+                        <span class="key">→</span>
+                        <span class="key-desc">セルを移動</span>
+                    </div>
+                </div>
+                
+                <div class="help-section">
+                    <h3>アクション</h3>
+                    <div class="key-item">
+                        <span class="key wide">Space</span>
+                        <span class="key">Enter</span>
+                        <span class="key-desc">セルを開く</span>
+                    </div>
+                    <div class="key-item">
+                        <span class="key">F</span>
+                        <span class="key-desc">フラグを立てる/外す</span>
+                    </div>
+                </div>
+                
+                <div class="help-section">
+                    <h3>ゲーム制御</h3>
+                    <div class="key-item">
+                        <span class="key">S</span>
+                        <span class="key-desc">ゲーム開始/リトライ</span>
+                    </div>
+                    <div class="key-item">
+                        <span class="key">1</span>
+                        <span class="key">2</span>
+                        <span class="key">3</span>
+                        <span class="key-desc">難易度選択（初級/中級/上級）</span>
+                    </div>
+                </div>
+                
+                <div class="help-section">
+                    <h3>その他</h3>
+                    <div class="key-item">
+                        <span class="key">H</span>
+                        <span class="key">?</span>
+                        <span class="key-desc">このヘルプを表示</span>
+                    </div>
+                    <div class="key-item">
+                        <span class="key">Esc</span>
+                        <span class="key-desc">ヘルプを閉じる</span>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 

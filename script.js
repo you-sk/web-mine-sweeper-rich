@@ -16,6 +16,10 @@ class Minesweeper {
         };
         this.resetStatsBtn = document.getElementById('resetStats');
         this.soundToggle = document.getElementById('soundToggle');
+        this.themeSelect = document.getElementById('themeSelect');
+        this.keyboardHelpBtn = document.getElementById('keyboardHelpBtn');
+        this.helpModal = document.getElementById('helpModal');
+        this.modalClose = document.querySelector('.modal-close');
         
         this.difficulties = {
             easy: { rows: 9, cols: 9, mines: 5 },
@@ -36,6 +40,11 @@ class Minesweeper {
         this.startTime = null;
         this.timerInterval = null;
         this.elapsedTime = 0;
+        
+        // キーボードナビゲーション用
+        this.focusedRow = 0;
+        this.focusedCol = 0;
+        this.keyboardEnabled = false;
         
         // 統計データ
         this.stats = this.loadStats();
@@ -82,6 +91,29 @@ class Minesweeper {
         this.soundToggle.checked = localStorage.getItem('soundEnabled') === 'true';
         this.soundToggle.addEventListener('change', (e) => {
             localStorage.setItem('soundEnabled', e.target.checked);
+        });
+        
+        // キーボードイベント
+        this.setupKeyboardControls();
+        
+        // テーマ設定
+        this.setupTheme();
+        
+        // キーボードヘルプボタン
+        this.keyboardHelpBtn.addEventListener('click', () => {
+            this.showKeyboardHelp();
+        });
+        
+        // モーダルを閉じる
+        this.modalClose.addEventListener('click', () => {
+            this.hideKeyboardHelp();
+        });
+        
+        // モーダル外をクリックしたら閉じる
+        this.helpModal.addEventListener('click', (e) => {
+            if (e.target === this.helpModal) {
+                this.hideKeyboardHelp();
+            }
         });
     }
     
@@ -152,6 +184,12 @@ class Minesweeper {
         
         // 地雷カウンターを更新
         this.updateMineCounter();
+        
+        // キーボードナビゲーションを有効化
+        this.keyboardEnabled = true;
+        this.focusedRow = Math.floor(this.rows / 2);
+        this.focusedCol = Math.floor(this.cols / 2);
+        this.updateFocusedCell();
         
         // ボタンテキストを更新
         this.gameBtn.textContent = 'リトライ';
@@ -515,6 +553,164 @@ class Minesweeper {
             // 音声再生に失敗しても、ゲームは続行
             console.log('Sound playback failed:', e);
         }
+    }
+    
+    // キーボードコントロール
+    setupKeyboardControls() {
+        document.addEventListener('keydown', (e) => {
+            // ヘルプ関連のキーは常に有効
+            switch(e.key) {
+                case 'h':
+                case 'H':
+                case '?':
+                    e.preventDefault();
+                    this.showKeyboardHelp();
+                    return;
+                case 'Escape':
+                    e.preventDefault();
+                    this.hideKeyboardHelp();
+                    return;
+                case 's':
+                case 'S':
+                    e.preventDefault();
+                    this.startGame();
+                    return;
+                case '1':
+                    e.preventDefault();
+                    this.selectDifficulty('easy');
+                    return;
+                case '2':
+                    e.preventDefault();
+                    this.selectDifficulty('medium');
+                    return;
+                case '3':
+                    e.preventDefault();
+                    this.selectDifficulty('hard');
+                    return;
+            }
+            
+            // ゲーム関連のキーはゲーム中のみ有効
+            if (!this.keyboardEnabled || this.gameOver) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.moveFocus(-1, 0);
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.moveFocus(1, 0);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    this.moveFocus(0, -1);
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    this.moveFocus(0, 1);
+                    break;
+                case ' ':
+                case 'Enter':
+                    e.preventDefault();
+                    this.handleKeyboardOpen();
+                    break;
+                case 'f':
+                case 'F':
+                    e.preventDefault();
+                    this.handleKeyboardFlag();
+                    break;
+            }
+        });
+    }
+    
+    moveFocus(dRow, dCol) {
+        const newRow = this.focusedRow + dRow;
+        const newCol = this.focusedCol + dCol;
+        
+        if (newRow >= 0 && newRow < this.rows && newCol >= 0 && newCol < this.cols) {
+            this.focusedRow = newRow;
+            this.focusedCol = newCol;
+            this.updateFocusedCell();
+        }
+    }
+    
+    updateFocusedCell() {
+        // 前のフォーカスを削除
+        document.querySelectorAll('.cell.focused').forEach(cell => {
+            cell.classList.remove('focused');
+        });
+        
+        // 新しいフォーカスを設定
+        if (this.cells[this.focusedRow] && this.cells[this.focusedRow][this.focusedCol]) {
+            this.cells[this.focusedRow][this.focusedCol].classList.add('focused');
+        }
+    }
+    
+    handleKeyboardOpen() {
+        const key = `${this.focusedRow},${this.focusedCol}`;
+        if (!this.flags.has(key) && !this.opened.has(key)) {
+            if (this.firstClick) {
+                this.placeMines(this.focusedRow, this.focusedCol);
+                this.firstClick = false;
+                this.startTimer();
+            }
+            this.openCell(this.focusedRow, this.focusedCol);
+            this.playSound('click');
+        }
+    }
+    
+    handleKeyboardFlag() {
+        const key = `${this.focusedRow},${this.focusedCol}`;
+        const cell = this.cells[this.focusedRow][this.focusedCol];
+        
+        if (!this.opened.has(key)) {
+            if (this.flags.has(key)) {
+                this.flags.delete(key);
+                cell.classList.remove('flag');
+                this.playSound('unflag');
+            } else {
+                this.flags.add(key);
+                cell.classList.add('flag');
+                this.playSound('flag');
+            }
+            this.updateMineCounter();
+        }
+    }
+    
+    showKeyboardHelp() {
+        this.helpModal.classList.add('show');
+    }
+    
+    hideKeyboardHelp() {
+        this.helpModal.classList.remove('show');
+    }
+    
+    // テーマ関連のメソッド
+    setupTheme() {
+        // 保存されたテーマを読み込み
+        const savedTheme = localStorage.getItem('theme') || 'default';
+        this.themeSelect.value = savedTheme;
+        this.applyTheme(savedTheme);
+        
+        // テーマ変更イベント
+        this.themeSelect.addEventListener('change', (e) => {
+            const theme = e.target.value;
+            this.applyTheme(theme);
+            localStorage.setItem('theme', theme);
+        });
+    }
+    
+    applyTheme(theme) {
+        // すべてのテーマクラスを削除
+        document.body.className = document.body.className.replace(/theme-\w+/, '');
+        // 新しいテーマを適用
+        document.body.classList.add(`theme-${theme}`);
+    }
+    
+    // 難易度選択メソッド
+    selectDifficulty(difficulty) {
+        this.currentDifficulty = difficulty;
+        this.updateDifficulty();
     }
 }
 
