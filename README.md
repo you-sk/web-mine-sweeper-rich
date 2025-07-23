@@ -2,6 +2,10 @@
 
 シンプルで美しいWEB版マインスイーパーゲームです。
 
+<img width="554" height="1094" alt="image" src="https://github.com/user-attachments/assets/42a39bc5-f411-42a4-a86a-0b726b2df648" />
+
+https://you-sk.github.io/web-mine-sweeper-rich/
+
 ## ✨ 特徴
 
 ### 基本機能
