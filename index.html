@@ -17,7 +17,14 @@
         </div>
 
         <div class="game-info">
-            <div class="mine-counter">💣 残り: <span id="mineCount">0</span></div>
+            <div class="info-box">
+                <span class="info-label">⏱️ 時間:</span>
+                <span id="timer" class="info-value">00:00</span>
+            </div>
+            <div class="info-box mine-counter">
+                <span class="info-label">💣 残り:</span>
+                <span id="mineCount" class="info-value">0</span>
+            </div>
         </div>
 
         <div class="grid-container">
@@ -27,6 +34,36 @@
         <button id="gameBtn" class="game-btn">ゲーム開始</button>
         
         <div id="message" class="message"></div>
+        
+        <div class="stats-container">
+            <h3>📊 統計</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-label">プレイ回数:</span>
+                    <span id="gamesPlayed" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">勝利:</span>
+                    <span id="gamesWon" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">勝率:</span>
+                    <span id="winRate" class="stat-value">0%</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">最速タイム:</span>
+                    <span id="bestTime" class="stat-value">--:--</span>
+                </div>
+            </div>
+            <button id="resetStats" class="reset-stats-btn">統計をリセット</button>
+        </div>
+        
+        <div class="sound-toggle">
+            <label>
+                <input type="checkbox" id="soundToggle">
+                <span>🔊 効果音</span>
+            </label>
+        </div>
     </div>
 
     <script src="script.js"></script>

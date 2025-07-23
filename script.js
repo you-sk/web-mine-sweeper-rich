@@ -4,7 +4,18 @@ class Minesweeper {
         this.gameBtn = document.getElementById('gameBtn');
         this.mineCountEl = document.getElementById('mineCount');
         this.messageEl = document.getElementById('message');
+        this.timerEl = document.getElementById('timer');
         this.difficultyBtns = document.querySelectorAll('.difficulty-btn');
+        
+        // 統計関連の要素
+        this.statsElements = {
+            gamesPlayed: document.getElementById('gamesPlayed'),
+            gamesWon: document.getElementById('gamesWon'),
+            winRate: document.getElementById('winRate'),
+            bestTime: document.getElementById('bestTime')
+        };
+        this.resetStatsBtn = document.getElementById('resetStats');
+        this.soundToggle = document.getElementById('soundToggle');
         
         this.difficulties = {
             easy: { rows: 9, cols: 9, mines: 5 },
@@ -22,6 +33,15 @@ class Minesweeper {
         this.opened = new Set();
         this.firstClick = true;
         this.gameOver = false;
+        this.startTime = null;
+        this.timerInterval = null;
+        this.elapsedTime = 0;
+        
+        // 統計データ
+        this.stats = this.loadStats();
+        
+        // サウンド設定
+        this.setupSounds();
         
         this.init();
     }
@@ -47,6 +67,22 @@ class Minesweeper {
         
         // 初期設定（ゲームは開始しない）
         this.updateDifficultyWithoutStart();
+        
+        // 統計を表示
+        this.updateStatsDisplay();
+        
+        // 統計リセットボタン
+        this.resetStatsBtn.addEventListener('click', () => {
+            if (confirm('統計をリセットしますか？')) {
+                this.resetStats();
+            }
+        });
+        
+        // サウンドトグル
+        this.soundToggle.checked = localStorage.getItem('soundEnabled') === 'true';
+        this.soundToggle.addEventListener('change', (e) => {
+            localStorage.setItem('soundEnabled', e.target.checked);
+        });
     }
     
     updateDifficultyWithoutStart() {
@@ -85,9 +121,17 @@ class Minesweeper {
         
         // 難易度変更時に自動的にゲームを開始
         this.startGame();
+        
+        // 統計表示を更新（難易度別のベストタイム）
+        this.updateStatsDisplay();
     }
     
     startGame() {
+        // ゲーム数を増やす
+        this.stats.gamesPlayed++;
+        this.saveStats();
+        this.updateStatsDisplay();
+        
         // ゲームをリセット
         this.cells = [];
         this.mines.clear();
@@ -97,6 +141,11 @@ class Minesweeper {
         this.gameOver = false;
         this.messageEl.textContent = '';
         this.messageEl.className = 'message';
+        
+        // タイマーをリセット
+        this.stopTimer();
+        this.elapsedTime = 0;
+        this.updateTimerDisplay();
         
         // グリッドを作成
         this.createGrid();
@@ -142,14 +191,16 @@ class Minesweeper {
         // 既に開いているマスはクリックできない
         if (this.opened.has(key)) return;
         
-        // 最初のクリックの場合、地雷を配置
+        // 最初のクリックの場合、地雷を配置とタイマー開始
         if (this.firstClick) {
             this.placeMines(row, col);
             this.firstClick = false;
+            this.startTimer();
         }
         
         // マスを開く
         this.openCell(row, col);
+        this.playSound('click');
     }
     
     handleRightClick(e) {
@@ -168,9 +219,11 @@ class Minesweeper {
         if (this.flags.has(key)) {
             this.flags.delete(key);
             cell.classList.remove('flag');
+            this.playSound('unflag');
         } else {
             this.flags.add(key);
             cell.classList.add('flag');
+            this.playSound('flag');
         }
         
         // 地雷カウンターを更新
@@ -215,6 +268,7 @@ class Minesweeper {
         // 地雷の場合
         if (this.mines.has(key)) {
             this.revealMine(row, col);
+            this.playSound('explosion');
             this.endGame(false);
             return;
         }
@@ -287,10 +341,25 @@ class Minesweeper {
     
     endGame(won) {
         this.gameOver = true;
+        this.stopTimer();
         
         if (won) {
             this.messageEl.textContent = 'クリア！おめでとうございます！';
             this.messageEl.classList.add('win');
+            this.playSound('win');
+            
+            // 統計を更新
+            this.stats.gamesWon++;
+            
+            // ベストタイムを更新
+            const currentTime = this.elapsedTime;
+            if (!this.stats.bestTimes[this.currentDifficulty] || 
+                currentTime < this.stats.bestTimes[this.currentDifficulty]) {
+                this.stats.bestTimes[this.currentDifficulty] = currentTime;
+            }
+            
+            this.saveStats();
+            this.updateStatsDisplay();
             
             // すべての地雷に旗を立てる
             this.mines.forEach(key => {
@@ -312,6 +381,140 @@ class Minesweeper {
     updateMineCounter() {
         const remaining = this.mineCount - this.flags.size;
         this.mineCountEl.textContent = remaining;
+        
+        // 残り地雷数に応じて視覚的フィードバック
+        const mineCounterBox = document.querySelector('.mine-counter');
+        mineCounterBox.classList.remove('warning', 'danger');
+        
+        if (remaining === 0) {
+            mineCounterBox.classList.add('danger');
+        } else if (remaining <= 3) {
+            mineCounterBox.classList.add('warning');
+        }
+    }
+    
+    startTimer() {
+        this.startTime = Date.now() - this.elapsedTime;
+        this.timerInterval = setInterval(() => {
+            this.elapsedTime = Date.now() - this.startTime;
+            this.updateTimerDisplay();
+        }, 100);
+    }
+    
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+    
+    updateTimerDisplay() {
+        const totalSeconds = Math.floor(this.elapsedTime / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        this.timerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // 統計関連のメソッド
+    loadStats() {
+        const saved = localStorage.getItem('minesweeperStats');
+        if (saved) {
+            return JSON.parse(saved);
+        }
+        return {
+            gamesPlayed: 0,
+            gamesWon: 0,
+            bestTimes: {
+                easy: null,
+                medium: null,
+                hard: null
+            }
+        };
+    }
+    
+    saveStats() {
+        localStorage.setItem('minesweeperStats', JSON.stringify(this.stats));
+    }
+    
+    updateStatsDisplay() {
+        this.statsElements.gamesPlayed.textContent = this.stats.gamesPlayed;
+        this.statsElements.gamesWon.textContent = this.stats.gamesWon;
+        
+        const winRate = this.stats.gamesPlayed > 0 
+            ? Math.round((this.stats.gamesWon / this.stats.gamesPlayed) * 100) 
+            : 0;
+        this.statsElements.winRate.textContent = winRate + '%';
+        
+        const bestTime = this.stats.bestTimes[this.currentDifficulty];
+        if (bestTime) {
+            const totalSeconds = Math.floor(bestTime / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            this.statsElements.bestTime.textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        } else {
+            this.statsElements.bestTime.textContent = '--:--';
+        }
+    }
+    
+    resetStats() {
+        this.stats = {
+            gamesPlayed: 0,
+            gamesWon: 0,
+            bestTimes: {
+                easy: null,
+                medium: null,
+                hard: null
+            }
+        };
+        this.saveStats();
+        this.updateStatsDisplay();
+    }
+    
+    // サウンド関連のメソッド
+    setupSounds() {
+        // Web Audio APIを使って簡単な効果音を生成
+        this.audioContext = null;
+        this.sounds = {
+            click: { frequency: 800, duration: 50 },
+            flag: { frequency: 1000, duration: 100 },
+            unflag: { frequency: 600, duration: 100 },
+            explosion: { frequency: 150, duration: 300 },
+            win: { frequency: 1200, duration: 200 }
+        };
+    }
+    
+    playSound(type) {
+        // 音を鳴らすかどうかの設定（デフォルトではオフ）
+        const soundEnabled = localStorage.getItem('soundEnabled') === 'true';
+        if (!soundEnabled) return;
+        
+        try {
+            if (!this.audioContext) {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            
+            const sound = this.sounds[type];
+            if (!sound) return;
+            
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.value = sound.frequency;
+            oscillator.type = type === 'explosion' ? 'sawtooth' : 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + sound.duration / 1000);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + sound.duration / 1000);
+        } catch (e) {
+            // 音声再生に失敗しても、ゲームは続行
+            console.log('Sound playback failed:', e);
+        }
     }
 }
 
